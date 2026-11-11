@@ -42,10 +42,15 @@ minecraft
     replace "%METAMORPH%", project.metamorph
 }
 
+repositories {
+    maven { url "https://www.cursemaven.com" }
+}
+
 dependencies {
-    compileOnly files("run/libs/blockbuster-${blockbuster}-${project.minecraft.version}-dev.jar")
-    compileOnly files("run/libs/metamorph-${metamorph}-${project.minecraft.version}-dev.jar")
-    compileOnly files("run/libs/mclib-${mclib}-${project.minecraft.version}-dev.jar")
+    /* Versions must match gradle.properties: blockbuster 2.6.1, metamorph 1.3.1, mclib 2.4.2 */
+    deobfProvided "curse.maven:blockbuster-254152:4528660"
+    deobfProvided "curse.maven:metamorph-256932:4044182"
+    deobfProvided "curse.maven:mchorses-mclib-304750:4528668"
 }
 
 processResources
