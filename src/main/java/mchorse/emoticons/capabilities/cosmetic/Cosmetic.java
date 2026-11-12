@@ -197,13 +197,6 @@ public class Cosmetic implements ICosmetic
         boolean disable = Emoticons.disableAnimations.get();
         boolean render = this.animator != null && (!disable || this.emote != null);
 
-        /* Armor with its own model (skirts, etc.) can't be drawn by Emoticons,
-         * so when there's no emote let the game render the player normally */
-        if (render && this.emote == null && AnimatorEmoticonsController.hasCustomArmorModel(entity))
-        {
-            render = false;
-        }
-
         if (render)
         {
             /* Just in case */
