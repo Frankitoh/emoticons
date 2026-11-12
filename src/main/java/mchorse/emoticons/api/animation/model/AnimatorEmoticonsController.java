@@ -7,6 +7,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import javax.vecmath.Matrix4f;
+import javax.vecmath.Vector4f;
+
 import com.google.common.collect.Maps;
 
 import mchorse.emoticons.common.emotes.Emote;
@@ -271,6 +274,7 @@ public class AnimatorEmoticonsController extends AnimatorController
         }
 
         BOBJBone body = armature.bones.get("body");
+        BOBJBone anchor = armature.bones.get("anchor");
 
         if (body == null)
         {
@@ -296,7 +300,7 @@ public class AnimatorEmoticonsController extends AnimatorController
 
                 /* BOBJ model: Y up, front looks toward +Z, feet at Y = 0.
                  * Biped model: Y down, front looks toward -Z, feet at 24 px */
-                this.setupMatrix(armature.matrices[body.index]);
+                this.setupHangingMatrix(armature, body, anchor);
                 GlStateManager.translate(0, 1.5F, 0);
                 GlStateManager.scale(1, -1, -1);
 
@@ -318,6 +322,37 @@ public class AnimatorEmoticonsController extends AnimatorController
         {
             RenderLightmap.unset();
         }
+    }
+
+    /**
+     * Setup the matrix of something that hangs from the hips, like a skirt.
+     * It follows the position of the hips (body bone), but only the rotation
+     * of the root bone, so it doesn't swing out when the torso leans.
+     */
+    private void setupHangingMatrix(BOBJArmature armature, BOBJBone body, BOBJBone anchor)
+    {
+        /* Rest position of the hips (head of the body bone) */
+        float hx = body.boneMat.m03;
+        float hy = body.boneMat.m13;
+        float hz = body.boneMat.m23;
+
+        Vector4f hip = new Vector4f(hx, hy, hz, 1);
+
+        armature.matrices[body.index].transform(hip);
+        GlStateManager.translate(hip.x, hip.y, hip.z);
+
+        if (anchor != null)
+        {
+            Matrix4f rotation = new Matrix4f(armature.matrices[anchor.index]);
+
+            rotation.m03 = 0;
+            rotation.m13 = 0;
+            rotation.m23 = 0;
+
+            this.setupMatrix(rotation);
+        }
+
+        GlStateManager.translate(-hx, -hy, -hz);
     }
 
     /**
