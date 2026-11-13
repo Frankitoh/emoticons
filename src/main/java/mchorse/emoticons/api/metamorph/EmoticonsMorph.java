@@ -1,6 +1,7 @@
 package mchorse.emoticons.api.metamorph;
 
 import mchorse.emoticons.Emoticons;
+import mchorse.emoticons.client.audio.EmoteSounds;
 import mchorse.emoticons.common.emotes.Emote;
 import mchorse.emoticons.skin_n_bones.api.animation.model.ActionConfig;
 import mchorse.emoticons.skin_n_bones.api.animation.model.ActionPlayback;
@@ -111,6 +112,8 @@ public class EmoticonsMorph extends AnimatedMorph
     @SideOnly(Side.CLIENT)
     private void setActionEmote(Emote emote, EntityLivingBase target)
     {
+        EmoteSounds.onEmote(target, emote);
+
         if (this.animator == null)
         {
             return;
@@ -161,7 +164,7 @@ public class EmoticonsMorph extends AnimatedMorph
 
         if (this.emote != null && this.emoteAction != null)
         {
-            if (this.emote.sound != null && this.emoteAction.getTick(0) == 0)
+            if (this.emote.sound != null && this.emoteAction.getTick(0) == 0 && !EmoteSounds.hasCustom(this.emote))
             {
                 target.world.playSound(target.posX, target.posY, target.posZ, this.emote.sound, SoundCategory.MASTER, 0.33F, 1, false);
             }
