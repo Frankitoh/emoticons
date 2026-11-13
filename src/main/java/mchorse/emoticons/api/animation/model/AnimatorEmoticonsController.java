@@ -300,7 +300,7 @@ public class AnimatorEmoticonsController extends AnimatorController
 
                 /* BOBJ model: Y up, front looks toward +Z, feet at Y = 0.
                  * Biped model: Y down, front looks toward -Z, feet at 24 px */
-                this.setupHangingMatrix(armature, body, anchor);
+                this.setupHangingMatrix(armature, body, null);
                 GlStateManager.translate(0, 1.5F, 0);
                 GlStateManager.scale(1, -1, -1);
 
