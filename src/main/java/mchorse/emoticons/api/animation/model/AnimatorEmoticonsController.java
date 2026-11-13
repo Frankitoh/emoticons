@@ -1,7 +1,5 @@
 package mchorse.emoticons.api.animation.model;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -22,7 +20,6 @@ import mchorse.emoticons.skin_n_bones.api.bobj.BOBJBone;
 import mchorse.mclib.client.render.RenderLightmap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBiped;
-import net.minecraft.client.model.ModelBox;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
@@ -61,8 +58,6 @@ public class AnimatorEmoticonsController extends AnimatorController
     private final Map<EntityEquipmentSlot, CustomArmor> customArmor = new EnumMap<EntityEquipmentSlot, CustomArmor>(EntityEquipmentSlot.class);
 
     private static boolean renderFailed;
-    private static long sneakStart;
-    private static int sneakSamples;
 
     private static class CustomArmor
     {
@@ -219,7 +214,6 @@ public class AnimatorEmoticonsController extends AnimatorController
                 if (LOGGED_MODELS.add(custom.getClass()))
                 {
                     System.out.println("[Emoticons] Custom armor model: " + custom.getClass().getName() + " (" + stack.getItem().getRegistryName() + ") slot " + slot);
-                    dumpModel(custom);
                 }
             }
         }
@@ -276,7 +270,8 @@ public class AnimatorEmoticonsController extends AnimatorController
         }
 
         BOBJBone body = armature.bones.get("body");
-        BOBJBone anchor = armature.bones.get("anchor");
+        BOBJBone leftLeg = armature.bones.get("left_leg");
+        BOBJBone rightLeg = armature.bones.get("right_leg");
 
         if (body == null)
         {
@@ -302,13 +297,11 @@ public class AnimatorEmoticonsController extends AnimatorController
 
                 /* BOBJ model: Y up, front looks toward +Z, feet at Y = 0.
                  * Biped model: Y down, front looks toward -Z, feet at 24 px */
-                this.setupHangingMatrix(armature, body, null);
+                this.setupHangingMatrix(armature, body, leftLeg, rightLeg);
                 GlStateManager.translate(0, 1.5F, 0);
                 GlStateManager.scale(1, -1, -1);
 
                 model.render(entity, 0, 0, 0, 0, 0, 0.0625F);
-
-                this.logCrouchPose(entity, armature);
             }
             catch (Exception e)
             {
@@ -329,85 +322,48 @@ public class AnimatorEmoticonsController extends AnimatorController
     }
 
     /**
-     * Debug: while crouching, print the pose of the main bones a few times
+     * How much of the thighs' rotation the skirt follows (0 = hangs straight
+     * down from the hips, 1 = fully follows the thighs)
      */
-    private void logCrouchPose(EntityLivingBase entity, BOBJArmature armature)
-    {
-        if (!entity.isSneaking())
-        {
-            sneakStart = 0;
-            sneakSamples = 0;
-
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-
-        if (sneakStart == 0)
-        {
-            sneakStart = now;
-        }
-
-        if (sneakSamples >= 4 || now - sneakStart < (sneakSamples + 1) * 500L)
-        {
-            return;
-        }
-
-        sneakSamples++;
-
-        StringBuilder sb = new StringBuilder("[Emoticons] Crouch pose #" + sneakSamples + " (" + (now - sneakStart) + " ms), pitch " + entity.rotationPitch + "\n");
-
-        for (String name : new String[] {"anchor", "body", "low_body", "left_leg", "right_leg"})
-        {
-            BOBJBone bone = armature.bones.get(name);
-
-            if (bone == null)
-            {
-                continue;
-            }
-
-            Matrix4f m = armature.matrices[bone.index];
-
-            /* Rotation as Euler angles (degrees) and translation */
-            double rx = Math.toDegrees(Math.atan2(m.m21, m.m22));
-            double ry = Math.toDegrees(-Math.asin(Math.max(-1, Math.min(1, m.m20))));
-            double rz = Math.toDegrees(Math.atan2(m.m10, m.m00));
-
-            sb.append(String.format("  %-9s rot=(%.1f, %.1f, %.1f) pos=(%.2f, %.2f, %.2f)\n", name, rx, ry, rz, m.m03, m.m13, m.m23));
-        }
-
-        System.out.println(sb.toString());
-    }
+    private static final float SKIRT_LEG_FOLLOW = 0.5F;
 
     /**
      * Setup the matrix of something that hangs from the hips, like a skirt.
-     * It follows the position of the hips (body bone), but only the rotation
-     * of the root bone, so it doesn't swing out when the torso leans.
+     * It follows the position of the hips (body bone), leans with the hips,
+     * and follows part of the average rotation of both thighs, so it lifts
+     * in front of the legs when crouching or sitting and doesn't swing out
+     * when the legs alternate while walking.
      */
-    private void setupHangingMatrix(BOBJArmature armature, BOBJBone body, BOBJBone anchor)
+    private void setupHangingMatrix(BOBJArmature armature, BOBJBone body, BOBJBone leftLeg, BOBJBone rightLeg)
     {
         /* Rest position of the hips (head of the body bone) */
         float hx = body.boneMat.m03;
         float hy = body.boneMat.m13;
         float hz = body.boneMat.m23;
 
+        Matrix4f bodyMatrix = armature.matrices[body.index];
         Vector4f hip = new Vector4f(hx, hy, hz, 1);
 
-        armature.matrices[body.index].transform(hip);
+        bodyMatrix.transform(hip);
         GlStateManager.translate(hip.x, hip.y, hip.z);
 
-        if (anchor != null)
+        float angle = pitch(bodyMatrix);
+
+        if (leftLeg != null && rightLeg != null)
         {
-            Matrix4f rotation = new Matrix4f(armature.matrices[anchor.index]);
-
-            rotation.m03 = 0;
-            rotation.m13 = 0;
-            rotation.m23 = 0;
-
-            this.setupMatrix(rotation);
+            angle += (pitch(armature.matrices[leftLeg.index]) + pitch(armature.matrices[rightLeg.index])) * 0.5F * SKIRT_LEG_FOLLOW;
         }
 
+        GlStateManager.rotate(angle, 1, 0, 0);
         GlStateManager.translate(-hx, -hy, -hz);
+    }
+
+    /**
+     * Rotation around the X axis (in degrees) of a bone matrix
+     */
+    private static float pitch(Matrix4f matrix)
+    {
+        return (float) Math.toDegrees(Math.atan2(matrix.m21, matrix.m22));
     }
 
     /**
@@ -439,103 +395,6 @@ public class AnimatorEmoticonsController extends AnimatorController
     private static void resetRotation(ModelRenderer part)
     {
         part.rotateAngleX = part.rotateAngleY = part.rotateAngleZ = 0;
-    }
-
-    /**
-     * Print the structure of a custom armor model into the log, to see what
-     * it's made of
-     */
-    private static void dumpModel(ModelBiped model)
-    {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("[Emoticons] Model dump of ").append(model.getClass().getName()).append(" (extends ").append(model.getClass().getSuperclass().getName()).append(")\n");
-
-        dumpPart(sb, "bipedHead", model.bipedHead, 1);
-        dumpPart(sb, "bipedHeadwear", model.bipedHeadwear, 1);
-        dumpPart(sb, "bipedBody", model.bipedBody, 1);
-        dumpPart(sb, "bipedRightArm", model.bipedRightArm, 1);
-        dumpPart(sb, "bipedLeftArm", model.bipedLeftArm, 1);
-        dumpPart(sb, "bipedRightLeg", model.bipedRightLeg, 1);
-        dumpPart(sb, "bipedLeftLeg", model.bipedLeftLeg, 1);
-
-        for (Class c = model.getClass(); c != null && c != Object.class; c = c.getSuperclass())
-        {
-            if (c.getName().startsWith("net.minecraft"))
-            {
-                continue;
-            }
-
-            for (Field field : c.getDeclaredFields())
-            {
-                if (Modifier.isStatic(field.getModifiers()))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    field.setAccessible(true);
-
-                    Object value = field.get(model);
-
-                    if (value instanceof ModelRenderer)
-                    {
-                        dumpPart(sb, "extra " + c.getSimpleName() + "." + field.getName(), (ModelRenderer) value, 1);
-                    }
-                    else if (value instanceof ModelRenderer[])
-                    {
-                        ModelRenderer[] array = (ModelRenderer[]) value;
-
-                        for (int i = 0; i < array.length; i++)
-                        {
-                            dumpPart(sb, "extra " + c.getSimpleName() + "." + field.getName() + "[" + i + "]", array[i], 1);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {}
-            }
-        }
-
-        System.out.println(sb.toString());
-    }
-
-    private static void dumpPart(StringBuilder sb, String name, ModelRenderer part, int depth)
-    {
-        for (int i = 0; i < depth; i++)
-        {
-            sb.append("  ");
-        }
-
-        if (part == null)
-        {
-            sb.append(name).append(": null\n");
-
-            return;
-        }
-
-        sb.append(name).append(String.format(": show=%s hidden=%s point=(%.1f, %.1f, %.1f) offset=(%.2f, %.2f, %.2f) rot=(%.2f, %.2f, %.2f)",
-            part.showModel, part.isHidden, part.rotationPointX, part.rotationPointY, part.rotationPointZ,
-            part.offsetX, part.offsetY, part.offsetZ, part.rotateAngleX, part.rotateAngleY, part.rotateAngleZ));
-
-        if (part.cubeList != null)
-        {
-            for (ModelBox box : part.cubeList)
-            {
-                sb.append(String.format(" box[(%.1f, %.1f, %.1f) -> (%.1f, %.1f, %.1f)]", box.posX1, box.posY1, box.posZ1, box.posX2, box.posY2, box.posZ2));
-            }
-        }
-
-        sb.append("\n");
-
-        if (part.childModels != null)
-        {
-            for (ModelRenderer child : part.childModels)
-            {
-                dumpPart(sb, "child", child, depth + 1);
-            }
-        }
     }
 
     /**
