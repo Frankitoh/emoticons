@@ -3,6 +3,7 @@ package mchorse.emoticons.capabilities.cosmetic;
 import mchorse.emoticons.ClientProxy;
 import mchorse.emoticons.Emoticons;
 import mchorse.emoticons.api.animation.model.AnimatorEmoticonsController;
+import mchorse.emoticons.client.audio.EmoteSounds;
 import mchorse.emoticons.blockbuster.BBIntegration;
 import mchorse.emoticons.common.EmoteAPI;
 import mchorse.emoticons.common.emotes.Emote;
@@ -127,7 +128,7 @@ public class Cosmetic implements ICosmetic
 
         if (this.emote != null && this.emoteAction != null)
         {
-            if (this.emote.sound != null && this.emoteAction.getTick(0) == 0)
+            if (this.emote.sound != null && this.emoteAction.getTick(0) == 0 && !EmoteSounds.hasCustom(this.emote))
             {
                 target.world.playSound(target.posX, target.posY, target.posZ, this.emote.sound, SoundCategory.MASTER, 0.33F, 1, false);
             }
@@ -160,6 +161,8 @@ public class Cosmetic implements ICosmetic
     @SideOnly(Side.CLIENT)
     private void setActionEmote(Emote emote, EntityLivingBase target)
     {
+        EmoteSounds.onEmote(target, emote);
+
         if (this.animator == null)
         {
             this.setupAnimator(target);
