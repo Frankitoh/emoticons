@@ -61,6 +61,7 @@ public class AnimatorEmoticonsController extends AnimatorController
     private final Map<EntityEquipmentSlot, CustomArmor> customArmor = new EnumMap<EntityEquipmentSlot, CustomArmor>(EntityEquipmentSlot.class);
 
     private static boolean renderFailed;
+    private static boolean loggedSneak;
 
     private static class CustomArmor
     {
@@ -305,6 +306,17 @@ public class AnimatorEmoticonsController extends AnimatorController
                 GlStateManager.scale(1, -1, -1);
 
                 model.render(entity, 0, 0, 0, 0, 0, 0.0625F);
+
+                if (entity.isSneaking() && !loggedSneak)
+                {
+                    loggedSneak = true;
+
+                    System.out.println("[Emoticons] Crouch state of " + model.getClass().getName() + ", entity sneaking: " + entity.isSneaking() + ", pitch: " + entity.rotationPitch);
+                    System.out.println("[Emoticons] body matrix: " + armature.matrices[body.index]);
+                    System.out.println("[Emoticons] anchor matrix: " + (anchor == null ? "none" : armature.matrices[anchor.index]));
+
+                    dumpModel(model);
+                }
             }
             catch (Exception e)
             {
