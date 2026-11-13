@@ -6,6 +6,8 @@ import mchorse.emoticons.client.EmoteKeys;
 import mchorse.emoticons.client.EntityModelHandler;
 import mchorse.emoticons.client.KeyboardHandler;
 import mchorse.emoticons.client.NetworkHandler;
+import mchorse.emoticons.client.audio.EmoteSounds;
+import mchorse.emoticons.client.audio.EmoteSoundsHandler;
 import mchorse.emoticons.commands.CommandEmote;
 import mchorse.emoticons.skin_n_bones.api.animation.Animation;
 import mchorse.emoticons.skin_n_bones.api.animation.AnimationManager;
@@ -150,6 +152,8 @@ public class ClientProxy extends CommonProxy
         /* Register event handlers */
         MinecraftForge.EVENT_BUS.register(new KeyboardHandler());
         MinecraftForge.EVENT_BUS.register(new EntityModelHandler());
+        MinecraftForge.EVENT_BUS.register(new EmoteSoundsHandler());
+        EmoteSounds.init();
 
         ClientCommandHandler.instance.registerCommand(new CommandEmote());
 
