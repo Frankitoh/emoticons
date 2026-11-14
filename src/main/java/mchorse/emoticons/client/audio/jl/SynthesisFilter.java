@@ -1487,13 +1487,8 @@ final class SynthesisFilter {
      * @return the loaded values for d[].
      */
     static private float[] load_d() {
-        try {
-            Class<?> elemType = Float.TYPE;
-            Object o = JavaLayerUtils.deserializeArrayResource("sfd.ser", elemType, 512);
-            return (float[]) o;
-        } catch (IOException ex) {
-            throw new ExceptionInInitializerError(ex);
-        }
+        /* Emoticons: the table is in code (SfdTable) instead of the sfd.ser resource */
+        return SfdTable.D.clone();
     }
 
     /**

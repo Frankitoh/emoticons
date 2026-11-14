@@ -93,6 +93,7 @@ public class Mp3Player implements Runnable
         catch (Throwable e)
         {
             System.err.println("[Emoticons] Couldn't play " + this.file.getName() + ": " + e);
+            e.printStackTrace();
         }
         finally
         {
