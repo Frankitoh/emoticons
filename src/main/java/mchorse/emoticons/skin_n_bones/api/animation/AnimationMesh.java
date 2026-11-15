@@ -1,5 +1,10 @@
 package mchorse.emoticons.skin_n_bones.api.animation;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import mchorse.emoticons.Emoticons;
 import mchorse.emoticons.skin_n_bones.api.bobj.BOBJArmature;
 import mchorse.emoticons.skin_n_bones.api.bobj.BOBJBone;
@@ -40,6 +45,13 @@ import java.util.List;
 public class AnimationMesh
 {
     public static final boolean DEBUG = false;
+
+    /**
+     * Direction (3 floats per vertex) and size factor (1 per vertex) in which
+     * the vertices of armor meshes are pushed out, see {@link #setupInflate()}
+     */
+    private float[] inflateDirs;
+    private float[] inflateScales;
 
     /**
      * Owner of this mesh 
@@ -199,6 +211,93 @@ public class AnimationMesh
      * matrix transformations to vertices and normals according to its 
      * bone owners and these bone influences.
      */
+    /**
+     * Figure out how to push the vertices of an armor mesh outwards without
+     * opening gaps. Cubes have hard edges, so a corner is made of several
+     * vertices with different normals. If each one moved along its own
+     * normal, the faces would come apart. Instead, every vertex that sits at
+     * the same position moves along the average of their normals, and by
+     * enough (1 / cosine) so that each face moves outwards by about the
+     * requested amount.
+     */
+    private void setupInflate()
+    {
+        float[] positions = this.data.posData;
+        float[] normals = this.data.normData;
+        int count = positions.length / 4;
+
+        /* Per position: sum of the different normals (3) and how many there
+         * are. A normal counts once, no matter how many triangles use it. */
+        Map<List<Integer>, float[]> sums = new HashMap<List<Integer>, float[]>();
+        Map<List<Integer>, Set<List<Integer>>> seen = new HashMap<List<Integer>, Set<List<Integer>>>();
+        List<List<Integer>> keys = new ArrayList<List<Integer>>(count);
+
+        for (int i = 0; i < count; i++)
+        {
+            List<Integer> key = Arrays.asList(
+                Math.round(positions[i * 4] * 10000F),
+                Math.round(positions[i * 4 + 1] * 10000F),
+                Math.round(positions[i * 4 + 2] * 10000F)
+            );
+            float[] sum = sums.get(key);
+
+            if (sum == null)
+            {
+                sum = new float[4];
+                sums.put(key, sum);
+                seen.put(key, new HashSet<List<Integer>>());
+            }
+
+            List<Integer> normal = Arrays.asList(
+                Math.round(normals[i * 3] * 100F),
+                Math.round(normals[i * 3 + 1] * 100F),
+                Math.round(normals[i * 3 + 2] * 100F)
+            );
+
+            if (seen.get(key).add(normal))
+            {
+                sum[0] += normals[i * 3];
+                sum[1] += normals[i * 3 + 1];
+                sum[2] += normals[i * 3 + 2];
+                sum[3] += 1;
+            }
+
+            keys.add(key);
+        }
+
+        float[] dirs = new float[count * 3];
+        float[] scales = new float[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            float[] sum = sums.get(keys.get(i));
+            float length = (float) Math.sqrt(sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]);
+
+            if (length > 0.0001F)
+            {
+                /* Same direction and size for every vertex at this position,
+                 * so they stay together. The average cosine between the
+                 * direction and the normals tells how far to go so that each
+                 * face moves out by the requested amount. */
+                dirs[i * 3] = sum[0] / length;
+                dirs[i * 3 + 1] = sum[1] / length;
+                dirs[i * 3 + 2] = sum[2] / length;
+                scales[i] = 1F / Math.max(0.5F, length / sum[3]);
+            }
+            else
+            {
+                /* The normals cancel each other out, use the vertex's own */
+                dirs[i * 3] = normals[i * 3];
+                dirs[i * 3 + 1] = normals[i * 3 + 1];
+                dirs[i * 3 + 2] = normals[i * 3 + 2];
+                scales[i] = 1;
+            }
+        }
+
+        this.inflateDirs = dirs;
+        this.inflateScales = scales;
+    }
+
     public void updateMesh()
     {
         Vector4f sumVertex = new Vector4f();
@@ -218,6 +317,14 @@ public class AnimationMesh
         /* Push armor outwards a bit, so the body doesn't poke through it
          * (in model units, 1 = 16 pixels, see the armor inflate option) */
         float inflate = this.name != null && this.name.startsWith("armor_") && Emoticons.armorInflate != null ? Emoticons.armorInflate.get() : 0;
+
+        Vector3f sumDir = new Vector3f();
+        Vector3f resultDir = new Vector3f(0, 0, 0);
+
+        if (inflate > 0 && this.inflateDirs == null)
+        {
+            this.setupInflate();
+        }
 
         for (int i = 0, c = newVertices.length / 4; i < c; i++)
         {
@@ -241,6 +348,14 @@ public class AnimationMesh
                     sumNormal.scale(weight);
                     resultNormal.add(sumNormal);
 
+                    if (inflate > 0)
+                    {
+                        sumDir.set(this.inflateDirs[i * 3], this.inflateDirs[i * 3 + 1], this.inflateDirs[i * 3 + 2]);
+                        matrices[index].transform(sumDir);
+                        sumDir.scale(weight);
+                        resultDir.add(sumDir);
+                    }
+
                     count++;
                 }
             }
@@ -249,6 +364,11 @@ public class AnimationMesh
             {
                 resultNormal.set(oldNormals[i * 3], oldNormals[i * 3 + 1], oldNormals[i * 3 + 2]);
                 resultVertex.set(oldVertices[i * 4], oldVertices[i * 4 + 1], oldVertices[i * 4 + 2], 1);
+
+                if (inflate > 0)
+                {
+                    resultDir.set(this.inflateDirs[i * 3], this.inflateDirs[i * 3 + 1], this.inflateDirs[i * 3 + 2]);
+                }
             }
 
             /* Thanks MiaoNLI for the fix insight! */
@@ -258,16 +378,18 @@ public class AnimationMesh
 
             if (inflate > 0)
             {
-                float length = (float) Math.sqrt(resultNormal.x * resultNormal.x + resultNormal.y * resultNormal.y + resultNormal.z * resultNormal.z);
+                float length = (float) Math.sqrt(resultDir.x * resultDir.x + resultDir.y * resultDir.y + resultDir.z * resultDir.z);
 
                 if (length > 0.0001F)
                 {
-                    float scale = inflate / length;
+                    float scale = inflate * this.inflateScales[i] / length;
 
-                    resultVertex.x += resultNormal.x * scale;
-                    resultVertex.y += resultNormal.y * scale;
-                    resultVertex.z += resultNormal.z * scale;
+                    resultVertex.x += resultDir.x * scale;
+                    resultVertex.y += resultDir.y * scale;
+                    resultVertex.z += resultDir.z * scale;
                 }
+
+                resultDir.set(0, 0, 0);
             }
 
             newVertices[i * 4] = resultVertex.x;
