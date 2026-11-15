@@ -138,11 +138,22 @@ public class EntityModelHandler
             if (cap != null && this.canShow(cap) && mc.gameSettings.thirdPersonView == 0)
             {
                 int w = resolution.getScaledWidth();
+                int h = resolution.getScaledHeight();
                 int x = Emoticons.playerRenderingX.get();
                 int y = Emoticons.playerRenderingY.get();
                 int scale = Emoticons.playerRenderingScale.get();
 
-                drawEntityOnScreen(w - x, y, scale, player, event.getPartialTicks());
+                /* Corners: 0 - top right, 1 - top left, 2 - bottom right,
+                 * 3 - bottom left. X and Y are measured from that corner
+                 * (Y is where the feet of the character are) */
+                int corner = Emoticons.playerPreviewCorner.get();
+                boolean right = corner == 0 || corner == 2;
+                boolean bottom = corner >= 2;
+
+                int posX = Math.max(0, Math.min(w, right ? w - x : x));
+                int posY = Math.max(0, Math.min(h, bottom ? h - y : y));
+
+                drawEntityOnScreen(posX, posY, scale, player, event.getPartialTicks());
             }
         }
     }

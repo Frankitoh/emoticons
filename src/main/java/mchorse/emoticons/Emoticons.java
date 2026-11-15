@@ -5,6 +5,7 @@ import mchorse.mclib.McLib;
 import mchorse.mclib.client.gui.utils.keys.IKey;
 import mchorse.mclib.config.ConfigBuilder;
 import mchorse.mclib.config.values.ValueBoolean;
+import mchorse.mclib.config.values.ValueFloat;
 import mchorse.mclib.config.values.ValueInt;
 import mchorse.mclib.events.RegisterConfigEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -42,7 +43,10 @@ public final class Emoticons
     public static ValueBoolean disableAnimations;
     public static ValueInt modelType;
 
+    public static ValueFloat armorInflate;
+
     public static ValueInt playerPreviewMode;
+    public static ValueInt playerPreviewCorner;
     public static ValueInt playerRenderingScale;
     public static ValueInt playerRenderingX;
     public static ValueInt playerRenderingY;
@@ -71,14 +75,23 @@ public final class Emoticons
         );
         modelType.clientSide();
 
+        armorInflate = builder.getFloat("armor_inflate", 0.02F, 0F, 0.5F);
+        armorInflate.clientSide();
+
         playerPreviewMode = builder.category("player_preview").getInt("mode", 0).modes(
             IKey.lang("emoticons.player_preview.emote"),
             IKey.lang("emoticons.player_preview.always"),
             IKey.lang("emoticons.player_preview.never")
         );
+        playerPreviewCorner = builder.getInt("corner", 0).modes(
+            IKey.lang("emoticons.player_preview.top_right"),
+            IKey.lang("emoticons.player_preview.top_left"),
+            IKey.lang("emoticons.player_preview.bottom_right"),
+            IKey.lang("emoticons.player_preview.bottom_left")
+        );
         playerRenderingScale = builder.getInt("scale", 20, 10, 220);
-        playerRenderingX = builder.getInt("x", 20, 0, 100);
-        playerRenderingY = builder.getInt("y", 50, 0, 100);
+        playerRenderingX = builder.getInt("x", 20, 0, 4000);
+        playerRenderingY = builder.getInt("y", 50, 0, 4000);
 
         builder.getCategory().markClientSide();
     }

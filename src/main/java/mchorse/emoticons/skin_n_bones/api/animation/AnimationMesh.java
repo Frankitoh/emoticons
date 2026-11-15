@@ -1,5 +1,6 @@
 package mchorse.emoticons.skin_n_bones.api.animation;
 
+import mchorse.emoticons.Emoticons;
 import mchorse.emoticons.skin_n_bones.api.bobj.BOBJArmature;
 import mchorse.emoticons.skin_n_bones.api.bobj.BOBJBone;
 import mchorse.emoticons.skin_n_bones.api.bobj.BOBJLoader;
@@ -214,6 +215,10 @@ public class AnimationMesh
 
         Matrix4f[] matrices = this.currentArmature.matrices;
 
+        /* Push armor outwards a bit, so the body doesn't poke through it
+         * (in model units, 1 = 16 pixels, see the armor inflate option) */
+        float inflate = this.name != null && this.name.startsWith("armor_") && Emoticons.armorInflate != null ? Emoticons.armorInflate.get() : 0;
+
         for (int i = 0, c = newVertices.length / 4; i < c; i++)
         {
             int count = 0;
@@ -250,6 +255,20 @@ public class AnimationMesh
             resultVertex.x /= resultVertex.w;
             resultVertex.y /= resultVertex.w;
             resultVertex.z /= resultVertex.w;
+
+            if (inflate > 0)
+            {
+                float length = (float) Math.sqrt(resultNormal.x * resultNormal.x + resultNormal.y * resultNormal.y + resultNormal.z * resultNormal.z);
+
+                if (length > 0.0001F)
+                {
+                    float scale = inflate / length;
+
+                    resultVertex.x += resultNormal.x * scale;
+                    resultVertex.y += resultNormal.y * scale;
+                    resultVertex.z += resultNormal.z * scale;
+                }
+            }
 
             newVertices[i * 4] = resultVertex.x;
             newVertices[i * 4 + 1] = resultVertex.y;

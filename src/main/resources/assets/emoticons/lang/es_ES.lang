@@ -43,18 +43,22 @@ emoticons.config.animations.disable=Disable non-emote animations
 emoticons.config.comments.animations.disable=Whether running, sneaking, swimming, flying, etc. animations should be shown?
 emoticons.config.animations.model_type=Model type
 emoticons.config.comments.animations.model_type=Default - it features bends, Simple - it has no bends and also contains less vertices (which theoretically makes it lighter on performance), Extruded - like Default, but it also has extruded bits for outer layers, Simple+ - like Simple, but it features sharp edges which look much nicer
+emoticons.config.animations.armor_inflate=Armor inflate
+emoticons.config.comments.animations.armor_inflate=How far outwards the armor is pushed (1 = 16 pixels), so the body doesn't poke through it during emotes. 0 turns it off, 0.02 is subtle, try 0.05 if parts still show through
 
 emoticons.config.player_preview.title=Player preview
 emoticons.config.player_preview.tooltip=The player preview in the corner options in the first person
 
 emoticons.config.player_preview.mode=Preview mode
 emoticons.config.comments.player_preview.mode=Determines when preview gets shown, either only when player emotes, always, or never
+emoticons.config.player_preview.corner=Corner
+emoticons.config.comments.player_preview.corner=Screen corner where the preview is placed. X and Y are measured from that corner (Y is where the feet of the character are)
 emoticons.config.player_preview.scale=Scale
 emoticons.config.comments.player_preview.scale=Scale of the character in the preview
 emoticons.config.player_preview.x=X shift
-emoticons.config.comments.player_preview.x=X shift of the player preview
+emoticons.config.comments.player_preview.x=Distance in pixels from the left or right edge (depends on the corner), up to 4000
 emoticons.config.player_preview.y=Y shift
-emoticons.config.comments.player_preview.y=Y shift of the player preview
+emoticons.config.comments.player_preview.y=Distance in pixels from the top or bottom edge (depends on the corner), up to 4000
 
 # GUI
 emoticons.gui.title=Emoticonos
@@ -68,6 +72,10 @@ emoticons.gui.editor.context.paste=Paste pose
 emoticons.player_preview.emote=Only emotes
 emoticons.player_preview.always=Always
 emoticons.player_preview.never=Never
+emoticons.player_preview.top_right=Top right
+emoticons.player_preview.top_left=Top left
+emoticons.player_preview.bottom_right=Bottom right
+emoticons.player_preview.bottom_left=Bottom left
 
 emoticons.player_model.default=Default
 emoticons.player_model.simple=Simple
